@@ -1,125 +1,77 @@
-import {Slider} from '@miblanchard/react-native-slider';
-import React from 'react';
+import React, {useEffect, useState} from 'react';
 import {
   Dimensions,
   FlatList,
   Image,
+  PermissionsAndroid,
   SafeAreaView,
   StyleSheet,
   Text,
-  TextInput,
   TouchableOpacity,
   View,
 } from 'react-native';
+import RNFS from 'react-native-fs';
+import {useDispatch} from 'react-redux';
+import CategoryItem from '../components/RootPage/CategoryItem';
+import Storage from '../components/RootPage/Storage';
+import Top_ber from '../components/RootPage/Top_ber';
 import {category} from '../constants/Category';
 import {textColor, themeColor} from '../constants/Colors';
 import Size from '../constants/GlobalSize';
-import {categoryPropType} from '../interface/PropInterface';
+import {RootProps} from '../interface/NavInterface';
+import {DispatchType} from '../store/Store';
 
-// Import Height Width
-const {height, width} = Dimensions.get('screen');
-
-export default function RootScreen() {
-  const renderItem = ({item}: categoryPropType) => {
-    return (
-      <View style={styles.categoryItem}>
-        <TouchableOpacity style={styles.categoryBox}>
-          <Image style={styles.categoryIcon} source={item.icon} />
-          <Text style={styles.categoryText}>{item.title}</Text>
-        </TouchableOpacity>
-      </View>
-    );
+export default function RootScreen(Props: RootProps) {
+  const requestStoragePermission = async () => {
+    try {
+      const granted = await PermissionsAndroid.request(
+        PermissionsAndroid.PERMISSIONS.READ_EXTERNAL_STORAGE,
+        {
+          title: 'My file storage Permission',
+          message:
+            'Cool Photo App needs access to your camera ' +
+            'so you can take awesome pictures.',
+          buttonNeutral: 'Ask Me Later',
+          buttonNegative: 'Cancel',
+          buttonPositive: 'OK',
+        },
+      );
+      if (granted === PermissionsAndroid.RESULTS.GRANTED) {
+        console.log('Permission granted');
+        getAllFiles();
+      } else {
+        console.log('Permission denied');
+      }
+    } catch (err) {
+      console.warn(err);
+    }
   };
+
+  const [data, setData] = useState<RNFS.ReadDirItem[]>([]);
+  const dispatch = useDispatch<DispatchType>();
+  const getAllFiles = () => {
+    RNFS.readDir(RNFS.DownloadDirectoryPath)
+      .then(result => {
+        // dispatch(getImages(result));
+        setData(result);
+      })
+      .catch(err => {
+        console.log(err.message, err.code);
+      });
+  };
+  useEffect(() => {
+    requestStoragePermission();
+  }, []);
 
   return (
     <SafeAreaView style={styles.theme}>
       {/* User and Search ber */}
-      <View style={styles.topComponent}>
-        {/* Title and User */}
-        <View style={styles.titleRow}>
-          <Text style={styles.title}>My Files</Text>
-          <Text>Image</Text>
-        </View>
-        {/* Search bars */}
-
-        <View style={styles.searchBox}>
-          <Image
-            style={styles.searchIcon}
-            source={require('../assets/others/search.png')}
-          />
-          <TextInput
-            style={styles.searchText}
-            keyboardType="web-search"
-            placeholder="Search a file..."
-          />
-        </View>
-      </View>
-
+      <Top_ber />
       {/* Storage Properties */}
       <View>
         <Text style={styles.miniTitle}>Storage</Text>
         <View style={styles.storageContainer}>
-          <View style={styles.storageItem}>
-            <View style={styles.storageIconContainer}>
-              <Image
-                style={styles.storageIcon}
-                source={require('../assets/others/phone.png')}
-              />
-            </View>
-            <Text style={styles.storageName}>Internal Storage</Text>
-            {/* Storage Size */}
-            <View>
-              <View style={styles.storageSizeTextContainer}>
-                <Text style={styles.storageSizeText}>11.5 GB Used</Text>
-                <Text style={styles.storageSizeText}>4.6 Free</Text>
-              </View>
-              <Slider
-                thumbStyle={{
-                  width: 0,
-                  height: 0,
-                }}
-                animationType="spring"
-                minimumValue={0}
-                maximumTrackTintColor={textColor.secondary}
-                minimumTrackTintColor={themeColor.blue}
-                maximumValue={100}
-                disabled
-                trackStyle={{height: 6}}
-                containerStyle={{height: 10}}
-                value={50}
-              />
-            </View>
-          </View>
-          <View style={styles.storageItem}>
-            <View style={styles.storageIconContainer}>
-              <Image
-                style={styles.storageIcon}
-                source={require('../assets/others/cloud.png')}
-              />
-            </View>
-            <Text style={styles.storageName}>External Storage</Text>
-            <View>
-              <View style={styles.storageSizeTextContainer}>
-                <Text style={styles.storageSizeText}>11.5 GB Used</Text>
-                <Text style={styles.storageSizeText}>4.6 Free</Text>
-              </View>
-              <Slider
-                thumbStyle={{
-                  width: 0,
-                  height: 0,
-                }}
-                animationType="spring"
-                minimumValue={0}
-                disabled
-                maximumTrackTintColor={textColor.secondary}
-                minimumTrackTintColor={themeColor.blue}
-                trackStyle={{height: 6}}
-                containerStyle={{height: 10}}
-                maximumValue={100}
-                value={50}
-              />
-            </View>
-          </View>
+          <Storage {...Props} />
         </View>
       </View>
 
@@ -130,7 +82,7 @@ export default function RootScreen() {
           <FlatList
             style={{width: '100%'}}
             data={category}
-            renderItem={renderItem}
+            renderItem={itemData => <CategoryItem data={{Props, itemData}} />}
             numColumns={4}
             keyExtractor={item => item.id.toString()}
           />
@@ -163,14 +115,14 @@ export default function RootScreen() {
     </SafeAreaView>
   );
 }
+// Import Height Width
+const {height, width} = Dimensions.get('screen');
 
 //Body
 const containerWidth = width - Size.small;
 //Storage Properties
 const storageItemWidth = containerWidth / 2 - Size.small;
 const storageItemMargin = Size.small * 2;
-// Category Properties
-const categoryItemWidth = containerWidth / 4;
 
 const styles = StyleSheet.create({
   theme: {
@@ -178,98 +130,24 @@ const styles = StyleSheet.create({
     backgroundColor: themeColor.primaryLight,
     paddingHorizontal: Size.small,
   },
-  topComponent: {
-    gap: Size.small * 2,
-    marginVertical: Size.small,
-  },
-  titleRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  title: {
-    fontSize: 25,
-    fontWeight: 'bold',
-    color: textColor.primary,
-    marginBottom: Size.small,
-  },
+
   miniTitle: {
     fontSize: 20,
     fontWeight: 'bold',
     color: textColor.primary,
     marginBottom: Size.small,
   },
-  searchBox: {
-    flexDirection: 'row',
-    backgroundColor: themeColor.primary,
-    borderRadius: Size.small,
-    alignItems: 'center',
-    paddingHorizontal: Size.small,
-  },
-  searchIcon: {width: 25, height: 25},
-  searchText: {color: textColor.primaryLight, fontSize: 16},
   storageContainer: {
     flexDirection: 'row',
     gap: storageItemMargin / 2,
   },
-  storageItem: {
-    width: storageItemWidth,
-    backgroundColor: themeColor.primary,
-    borderRadius: Size.small,
-    padding: Size.small,
-  },
-  storageIconContainer: {
-    backgroundColor: themeColor.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderRadius: Size.small,
-    width: 50,
-    height: 50,
-  },
-  storageIcon: {
-    width: 30,
-    height: 30,
-  },
-  storageName: {
-    color: textColor.primary,
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginVertical: Size.small,
-  },
-  storageSizeTextContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-  },
-  storageSizeText: {
-    color: textColor.primaryLight,
-    fontWeight: 'bold',
-    fontSize: 13,
-  },
+
   categoryContainer: {
     backgroundColor: themeColor.primary,
     padding: Size.small,
     borderRadius: Size.small,
   },
-  categoryItem: {
-    width: categoryItemWidth,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  categoryIcon: {
-    width: 30,
-    height: 30,
-    resizeMode: 'contain',
-  },
-  categoryText: {
-    color: textColor.primaryLight,
-    textAlign: 'center',
-    fontSize: 13,
-    margin: Size.small / 2,
-  },
-  categoryBox: {
-    margin: Size.small,
-    alignItems: 'center',
-  },
+
   recentContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',

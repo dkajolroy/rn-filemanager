@@ -1,1 +1,3 @@
-export type categoryPropType = {item: {title: string; id: number; icon: any}};
+export type categoryPropType = {
+  item: {title: string; id: number; icon: any};
+};
